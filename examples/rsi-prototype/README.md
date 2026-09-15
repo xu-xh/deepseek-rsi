@@ -114,6 +114,19 @@ update_goal({ action: "pause"|"complete"|"blocked" })
 in-loop bound, and the runtime's own `workflow` `maxTotalAgents` (caller-set) caps
 subagent spend. Tokens are the real currency — set all three deliberately.
 
+### W3: budget watchdog, resume, and context budget (wiring)
+
+The wave loop returns a `termination` field — `done` (curriculum converged),
+`stalled` (consecutive waves with no usable candidate AND no committed memory;
+guard with `args.maxConsecutiveStalls`, default 1), or `budget_exhausted`
+(waves ran to `maxWaves` without converging). A verifier that returns nothing is
+retried once before degrading to `UNVERIFIED`. To continue an interrupted run,
+set `args.startWave` (e.g. `2`): the loop starts at that wave, reuses the memory
+under `commits/`, and reports `resumedFrom` — artifact existence is the resume
+key, same as RSIAgent. Token-level context fold/keep-char budget is owned by the
+DSH runtime (agent context compaction and session log persistence), not by this
+prototype; the loop only adds the wave/stall/watchdog layer on top.
+
 ## Branch protection
 
 `master` is protected. Work on `feat/*` branches only; a local `pre-push` hook

@@ -72,11 +72,15 @@ const DECISION_SCHEMA = {
 
 const waves = []
 let topic = waveSeedTopic
+const startWave = Number(A.startWave ?? 1)
+const maxConsecutiveStalls = Number(A.maxConsecutiveStalls ?? 1)
+let stalls = 0
+let termination = null
 
 phase('rsi-wave-loop')
-log(`RSI wave loop: root=${root} maxWaves=${maxWaves} actorCount=${actorCount}`)
+log(`RSI wave loop: root=${root} maxWaves=${maxWaves} actorCount=${actorCount} startWave=${startWave} maxStalls=${maxConsecutiveStalls}`)
 
-for (let wave = 1; wave <= maxWaves; wave++) {
+for (let wave = startWave; wave <= maxWaves; wave++) {
   const waveLabel = `w${String(wave).padStart(3, '0')}`
   const waveDir = `${ws}/waves/${waveLabel}`
 
@@ -105,16 +109,25 @@ for (let wave = 1; wave <= maxWaves; wave++) {
   phase(`wave-${wave}-verify`)
   const verified = []
   for (const r of usable) {
-    const v = await agent(
+    let v = await agent(
       verifierPrompt.replaceAll('__PROTO__', proto) +
       `\n\nTASK (wave ${wave}): ${topic}\n` +
       `Inspect ONLY this candidate directory: ${r.dir}\n` +
       `Remember: reads through verify-read, behavioral checks through verify-run.`,
       { label: `verifier-${wave}.${r.actor}`, phase: `wave-${wave}-verify`, schema: VERDICT_SCHEMA },
     )
+    if (!v) { // one retry for a transient verifier failure before degrading to UNVERIFIED
+      v = await agent(
+        verifierPrompt.replaceAll('__PROTO__', proto) +
+        `\n\nTASK (wave ${wave}) RETRY: ${topic}\n` +
+        `Inspect ONLY this candidate directory: ${r.dir}\n` +
+        `Remember: reads through verify-read, behavioral checks through verify-run.`,
+        { label: `verifier-${wave}.${r.actor}-r`, phase: `wave-${wave}-verify`, schema: VERDICT_SCHEMA },
+      )
+    }
     verified.push({
       actor: r.actor, dir: r.dir,
-      ...(v ?? { verdict: 'UNVERIFIED', score: 0, findings: 'verifier failed', evidence: '' }),
+      ...(v ?? { verdict: 'UNVERIFIED', score: 0, findings: 'verifier failed after retry', evidence: '' }),
     })
   }
 
@@ -138,6 +151,13 @@ for (let wave = 1; wave <= maxWaves; wave++) {
 
   // ---- curriculum: decide next wave or done
   phase(`wave-${wave}-curriculum`)
+
+  // budget watchdog: a wave with no usable candidate, or with nothing verifiable
+  // AND nothing committed, is a stall signal; consecutive stalls end the loop as
+  // 'stalled' (RSIAgent's STALLED termination) instead of burning budget forever.
+  const stalled = usable.length === 0 || (verified.every((ve) => ve.verdict === 'UNVERIFIED') && commits.length === 0)
+  stalls = stalled ? stalls + 1 : 0
+
   const summary = verified
     .map((v) => `- ${v.actor}: ${v.verdict} score=${v.score} | ${String(v.findings).slice(0, 200)}`)
     .join('\n')
@@ -146,16 +166,29 @@ for (let wave = 1; wave <= maxWaves; wave++) {
     { label: `curriculum-${wave}`, phase: `wave-${wave}-curriculum`, schema: DECISION_SCHEMA },
   )
   const dec = decision ?? { action: 'done', next_topic: '', reason: 'curriculum agent failed' }
-  waves.push({ wave, topic, actors: actorResults, verified, commits, decision: dec })
+  waves.push({ wave, topic, actors: actorResults, verified, commits, decision: dec, stalls })
   log(`wave ${wave}: curriculum -> ${dec.action} (${dec.reason})`)
 
-  if (dec.action !== 'next_wave' || !dec.next_topic) break
+  if (dec.action !== 'next_wave' || !dec.next_topic) {
+    termination = 'done'
+    break
+  }
+  if (stalls >= maxConsecutiveStalls) {
+    termination = 'stalled'
+    break
+  }
   topic = dec.next_topic
 }
+
+termination ??= 'budget_exhausted'
+log(`RSI wave loop finished: termination=${termination} waves=${waves.length} stalls=${stalls}`)
 
 return {
   ok: waves.length > 0,
   waves,
   finalDecision: waves.length ? waves[waves.length - 1].decision : null,
+  termination,
+  resumedFrom: startWave > 1 ? startWave : null,
+  stalls,
   memory: { commitRoot, memoryDir },
 }
