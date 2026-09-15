@@ -1,0 +1,58 @@
+name: rsi-prototype
+
+# Lightweight CI for the RSI prototype only (examples/rsi-prototype).
+# Runs the no-LLM, no-credential checks: ESM syntax gates, workflow-body
+# syntax, metadata JSON validity, and the 16-check memory-commit smoke test.
+# The full harness CI (ci.yml / ci-master.yml) still covers the rest of the
+# monorepo; this job intentionally avoids a pnpm install of the workspace.
+
+on:
+  push:
+    paths:
+      - 'examples/rsi-prototype/**'
+      - '.github/workflows/rsi-prototype.yml'
+  pull_request:
+    paths:
+      - 'examples/rsi-prototype/**'
+      - '.github/workflows/rsi-prototype.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prototype-check:
+    name: rsi-prototype smoke (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24']
+    defaults:
+      run:
+        working-directory: examples/rsi-prototype
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node }}
+      - name: ESM syntax gates (pure modules and tools)
+        run: |
+          set -euo pipefail
+          node --check lib/memory-lib.mjs
+          node --check tools/commit-memory.mjs
+          node --check tools/smoke.mjs
+          node --check scripts/install-protection-hook.mjs
+      - name: Workflow body syntax (top-level return requires a wrapper)
+        run: |
+          set -euo pipefail
+          { printf 'const __w = async () => {\n'; cat workflows/wave-rsi.body.js; printf '\n};\nvoid __w;\n'; } > /tmp/body-check.mjs
+          node --check /tmp/body-check.mjs
+      - name: Workflow metadata JSON validity
+        run: node -e "JSON.parse(require('node:fs').readFileSync('workflows/meta.json', 'utf8'))"
+      - name: Memory-commit gate isolation smoke
+        run: node tools/smoke.mjs
