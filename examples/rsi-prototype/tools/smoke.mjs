@@ -126,6 +126,48 @@ try {
     usageCode = e.status
   }
   check('CLI usage error returns exit 1', usageCode === 1, `got ${usageCode}`)
+
+  // ---- W2: restricted verifier read channel (verify-read) ----
+  const READ = path.join(ROOT, 'tools', 'verify-read.mjs')
+  const vRoot = path.join(ws, 'verify-area')
+  await fs.mkdir(vRoot, { recursive: true })
+  await fs.writeFile(path.join(vRoot, 'note.md'), '# verified note\n')
+  const inRoot = execFileSync('node', [READ, '--root', vRoot, '--path', 'note.md'], { encoding: 'utf-8' })
+  check('verify-read allows in-root read', inRoot.includes('# verified note'))
+
+  // 12. verify-read rejects paths escaping the allowed root
+  let readGuard = 0
+  try {
+    execFileSync('node', [READ, '--root', vRoot, '--path', os.homedir()], { encoding: 'utf-8', stdio: 'pipe' })
+  } catch (e) {
+    readGuard = e.status
+  }
+  check('verify-read containment violation returns exit 2', readGuard === 2, `got ${readGuard}`)
+
+  // 13. verify-read listing skips symlinks (no traversal)
+  await fs.symlink(cand, path.join(vRoot, 'escape-link'), 'dir')
+  const listing = JSON.parse(execFileSync('node', [READ, '--root', vRoot, '--list'], { encoding: 'utf-8' }))
+  check('verify-read --list excludes symlinks', !listing.files.includes('escape-link'), JSON.stringify(listing.files))
+
+  // ---- W2: behavioral verification with rollback (verify-run) ----
+  const RUN = path.join(ROOT, 'tools', 'verify-run.mjs')
+  await fs.writeFile(path.join(vRoot, 'probe.sh'), '#!/bin/sh\necho probe-ok\nprintf leaked > leaktrack.txt\n')
+  const runRes = JSON.parse(execFileSync('node', [RUN, '--candidate', vRoot, '--timeout', '10', '--', 'sh', 'probe.sh'], { encoding: 'utf-8' }))
+  check('verify-run behavioral probe ok', runRes.ok === true && runRes.exit_code === 0, JSON.stringify({ exit: runRes.exit_code, out: runRes.stdout.slice(0, 30) }))
+  check('verify-run side effects rolled back (original untouched)', !(await fs.stat(path.join(vRoot, 'leaktrack.txt')).then(() => true, () => false)))
+  const leftovers = (await fs.readdir(os.tmpdir())).filter((n) => n.startsWith('rsi-verify-'))
+  check('verify-run discards copies after execution', leftovers.length === 0, JSON.stringify(leftovers))
+
+  let timeoutCode = 0
+  const timedRes = (() => {
+    try {
+      return JSON.parse(execFileSync('node', [RUN, '--candidate', vRoot, '--timeout', '1', '--', 'sleep', '5'], { encoding: 'utf-8', timeout: 15000 }))
+    } catch (e) {
+      timeoutCode = e.status ?? 0
+      return e.stdout ? JSON.parse(e.stdout) : null
+    }
+  })()
+  check('verify-run timeout marks timed_out', timedRes?.timed_out === true, `code=${timeoutCode} timed=${timedRes?.timed_out}`)
 } finally {
   await fs.rm(ws, { recursive: true, force: true })
 }

@@ -45,6 +45,8 @@ jobs:
           set -euo pipefail
           node --check lib/memory-lib.mjs
           node --check tools/commit-memory.mjs
+          node --check tools/verify-read.mjs
+          node --check tools/verify-run.mjs
           node --check tools/smoke.mjs
           node --check scripts/install-protection-hook.mjs
       - name: Workflow body syntax (top-level return requires a wrapper)

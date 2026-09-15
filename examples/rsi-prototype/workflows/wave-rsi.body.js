@@ -14,10 +14,19 @@ directory given to you. One deliverable + PROPOSAL.md (what and why). Keep it sm
 and concrete. Do not grade yourself.`
 
 const DEFAULT_VERIFIER_PROMPT = `You are the VERIFIER Agent. Independently check the
-candidate directory against the task. You may read ONLY that directory. Never read
-actor notes/transcripts or the memory area. Read real file content; PASS requires
-direct evidence for every requirement. Verdict PASS/FAIL/UNVERIFIED, score 0-100,
-requirement-by-requirement findings, and evidence file names.`
+candidate directory against the task. You may access files ONLY through the
+restricted read channel and run probe commands ONLY inside a throwaway copy:
+  - READ:    node ${proto}/tools/verify-read.mjs --root <candidateDir> --path <rel>
+             (also --list; any path outside the candidate dir is rejected, exit 2)
+  - RUN:     node ${proto}/tools/verify-run.mjs --candidate <candidateDir> --timeout 30 -- <cmd...>
+             (executes inside a temporary COPY of the candidate, side effects are
+             discarded afterwards — use it to confirm BEHAVIORAL claims like
+             "the script really prints X / really exits 0")
+Never read actor notes/transcripts, the memory area, or sibling candidates.
+Read real file content; PASS requires direct evidence for every requirement.
+Verdict PASS/FAIL/UNVERIFIED, score 0-100, requirement-by-requirement findings,
+evidence file names, and — for behavioral claims — the verify-run exit_code/stdout you
+observed.`
 
 const DEFAULT_CURRICULUM_PROMPT = `You are the CURRICULUM Agent. From the wave
 summary and memory commit count, choose next_wave (with a concrete next_topic

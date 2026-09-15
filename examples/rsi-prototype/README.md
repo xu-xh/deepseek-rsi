@@ -27,6 +27,8 @@ examples/rsi-prototype/
   prompts/                     # canonical role prompts (actor/verifier/curriculum)
   lib/memory-lib.mjs           # memory-commit gate primitives
   tools/commit-memory.mjs      # CLI: generate | verify | hash
+  tools/verify-read.mjs        # verifier restricted READ channel (containment)
+  tools/verify-run.mjs         # verifier behavioral probe in throwaway copy
   tools/smoke.mjs              # no-LLM mechanical checks
   scripts/install-protection-hook.mjs
   docs/BRANCH-PROTECTION.md    # master is protected; feature branches only
@@ -77,14 +79,40 @@ state with the goal tools: create one goal per learning run
 and pause/resume across restarts. The script's built-in curriculum is the
 self-contained fallback for headless runs.
 
-## Isolation notes (W1 scope)
+## Isolation & behavioral verification (W2)
 
-Verifier isolation is currently **prompt-level + directory staging** (the script
-hands the verifier only its candidate path). Mechanical enforcement — fs-sandbox
-path scoping, guard rules that forbid the verifier's tools from touching the
-actor/memory areas, and snapshot/rollback for candidates — is the W2 hardening
-item (see the integration report in
-`/root/workspace/artifacts/rsiagent-dsh/rsia-dsh-report.html`).
+The verifier accesses the candidate through two mechanical channels instead of
+raw filesystem tools:
+
+- `tools/verify-read.mjs` — restricted READ: realpath containment, no symlink
+  traversal, no write verbs. Any path outside the candidate's allowed root is
+  rejected (`CONTAIN` → exit 2).
+- `tools/verify-run.mjs` — behavioral probe: executes a command inside a
+  **throwaway copy** of the candidate (fixed timeout), then discards the copy.
+  Side effects can never leak into the candidate or memory ("lightweight
+  rollback"); `timed_out` is reported distinctly from a failed exit code.
+
+These make the verifier's *isolation boundary* and *behavioral grounding*
+mechanically enforced at the tool layer. For deployments that can additionally
+shape the verifier agent's tool surface, the recommended DSH-level composition is:
+give the verifier subagent ONLY these two channels (plus the schema-constrained
+report), enforced with DSH `sandbox`/`guard`/`fs-sandbox` — so the agent cannot
+bypass the channels with other tools. That final layer is deployment config, not
+prototype code.
+
+## Goal budget wiring (session-driven curriculum)
+
+In a live DSH session the host agent should cap cost with the goal tools:
+
+```text
+create_goal({ objective: "RSI run: <topic>", max_goal_rounds: <waveCap> })
+update_goal({ phase: "wave-2", ... })   # advance between waves
+update_goal({ action: "pause"|"complete"|"blocked" })
+```
+
+`max_goal_rounds` is the wave budget; the workflow script's `args.maxWaves` is the
+in-loop bound, and the runtime's own `workflow` `maxTotalAgents` (caller-set) caps
+subagent spend. Tokens are the real currency — set all three deliberately.
 
 ## Branch protection
 
