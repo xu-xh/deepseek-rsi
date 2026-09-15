@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "role": "verifier",
+  "_comment": "Machine-readable tool-surface spec for the VERIFIER agent. check-deploy-scope.mjs enforces these invariants in CI; verifier-scope.cordis.yml is the paste-in deployment example the tool names must match.",
+  "allowed_tools": [
+    "verify-read",
+    "verify-run"
+  ],
+  "required_audit": {
+    "read": "--audit <path>",
+    "run": "--audit <path>"
+  },
+  "forbidden_tools_substrings": [
+    "bash",
+    "shell",
+    "subprocess",
+    "terminal",
+    "fs-write",
+    "fs-edit",
+    "fs-write-atomic",
+    "computer-use",
+    "web",
+    "workflow",
+    "subagent"
+  ]
+}

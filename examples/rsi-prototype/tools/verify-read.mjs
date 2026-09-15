@@ -35,6 +35,12 @@ async function resolveInside(root, p) {
 async function main(argv) {
   const root = need('root', argv)
   const absRoot = await fs.realpath(root)
+  const auditFile = argv[argv.indexOf('--audit') + 1]
+  const audit = async (target, ok, note = '') => {
+    if (!auditFile) return
+    await fs.appendFile(auditFile,
+      JSON.stringify({ tool: 'verify-read', ts: new Date().toISOString(), root: absRoot, target, ok, note }) + '\n')
+  }
   if (argv.includes('--list')) {
     const files = []
     async function walk(dir) {
@@ -50,11 +56,18 @@ async function main(argv) {
     return 0
   }
   const p = need('path', argv)
-  const { real } = await resolveInside(root, p)
+  let real
+  try {
+    ({ real } = await resolveInside(root, p))
+  } catch (err) {
+    await audit(p, false, `denied: ${err?.code ?? 'ERR'}`) // attempted escapes are recorded too
+    throw err
+  }
   const st = await fs.stat(real)
   if (!st.isFile()) throw Object.assign(new Error(`not a file: ${real}`), { code: 'CONTAIN' })
   const maxBytes = Number(argv[argv.indexOf('--max-bytes') + 1] ?? 200_000)
   const data = await fs.readFile(real)
+  await audit(p, true)
   if (data.length > maxBytes) {
     throw new Error(`file exceeds --max-bytes ${maxBytes}: ${Buffer.byteLength(data)} bytes`)
   }

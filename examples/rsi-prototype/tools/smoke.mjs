@@ -168,6 +168,27 @@ try {
     }
   })()
   check('verify-run timeout marks timed_out', timedRes?.timed_out === true, `code=${timeoutCode} timed=${timedRes?.timed_out}`)
+
+  // ---- W2+: verifier access audit (mechanization of "what did the verifier touch") ----
+  const auditDir = path.join(ws, 'audit')
+  await fs.mkdir(auditDir, { recursive: true })
+  const auditRead = path.join(auditDir, 'verifier.jsonl')
+  execFileSync('node', [READ, '--root', vRoot, '--path', 'note.md', '--audit', auditRead], { encoding: 'utf-8' })
+  let esc = 0
+  try {
+    execFileSync('node', [READ, '--root', vRoot, '--path', os.homedir(), '--audit', auditRead], { encoding: 'utf-8', stdio: 'pipe' })
+  } catch (e) { esc = e.status }
+  check('audited escape attempt also returns exit 2', esc === 2, `got ${esc}`)
+  execFileSync('node', [RUN, '--candidate', vRoot, '--timeout', '10', '--audit', auditRead, '--', 'sh', 'probe.sh'], { encoding: 'utf-8' })
+  const auditLines = (await fs.readFile(auditRead, 'utf8')).trim().split('\n').map(JSON.parse)
+  check('audit log records read | denied | run',
+    auditLines.map((l) => `${l.tool}:${l.ok}`).join('|') === 'verify-read:true|verify-read:false|verify-run:true',
+    JSON.stringify(auditLines.map((l) => ({ tool: l.tool, ok: l.ok }))))
+  check('audit contains no write events', auditLines.every((l) => l.tool !== 'verify-run' || l.cmd), 'only reads and runs')
+
+  // ---- deploy-scope gate: verifier tool surface is machine-checkable ----
+  const scopeOk = execFileSync('node', [path.join(ROOT, 'tools', 'check-deploy-scope.mjs')], { encoding: 'utf-8' })
+  check('deploy verifier-scope gate passes', scopeOk.includes('DEPLOY-SCOPE OK'), scopeOk.split('\n').filter((l) => l.startsWith('FAIL')).join('; ') || 'ok')
 } finally {
   await fs.rm(ws, { recursive: true, force: true })
 }

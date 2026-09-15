@@ -1,0 +1,51 @@
+# verifier-scope.cordis.yml — deployment example: mechanically scope the
+# VERIFIER agent down to the two restricted channels.
+#
+# This mirrors tools/verify-{read,run}.mjs and deploy/verifier-scope.spec.json.
+# Adjust plugin names/paths to your runtime; tools/check-deploy-scope.mjs
+# asserts the tool names below match the spec (no bare shell/fs/write tools).
+#
+# The intent: the verifier agent sees ONLY:
+#   - the rsi-prototype tool scripts (verify-read / verify-run), always with
+#     --audit into the run's audit dir, and
+#   - the schema-constrained verdict produced by the workflow layer.
+# It must NOT see bash/shell/fs-write/terminal/subagent/workflow tools.
+
+# --- per-session branch protection (verifier seat) ---------------------------
+permissions:
+  - verifier:
+      deny:
+        - dsh-bash-local
+        - dsh-bash-sandbox
+        - dsh-shell
+        - dsh-subprocess
+        - dsh-terminal
+        - dsh-fs
+        - dsh-fs-sandbox
+        - dsh-computer-use
+        - dsh-browser-use
+        - dsh-web-search-*
+        - dsh-workflow
+        - dsh-subagent-*
+        - dsh-tool-subagent
+        - dsh-extensions
+      allow:
+        - dsh-rsi-verify-read   # wraps tools/verify-read.mjs
+        - dsh-rsi-verify-run    # wraps tools/verify-run.mjs
+      env:
+        RSI_VERIFIER_AUDIT: "/var/log/rsi/audit/verifier.jsonl"
+
+# --- sandbox policy for the verifier seat (defense in depth) -----------------
+sandbox:
+  verifier:
+    mode: restrict
+    read_roots:
+      - "/root/workspace/deepseek-rsi-dev/examples/rsi-prototype"
+    write_roots: []            # verifier writes nothing on the host
+    network: none
+
+# --- audit requirement (checked at runtime by actual --audit flags) ----------
+audit:
+  verifier_reads: required
+  verifier_runs: required
+  audit_dir: "/var/log/rsi/audit"

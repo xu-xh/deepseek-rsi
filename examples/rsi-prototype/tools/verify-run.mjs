@@ -61,24 +61,30 @@ async function main(argv) {
   if (dash === -1) throw Object.assign(new Error('expected "--" before the command'), { code: 'USAGE' })
   const candidate = need('candidate', argv)
   const timeoutSecs = Number(argv[argv.indexOf('--timeout') + 1] ?? 60)
+  const auditFile = argv[argv.indexOf('--audit') + 1]
   const cmd = argv[dash + 1]
   const cmdArgs = argv.slice(dash + 2)
 
   const absCandidate = await fs.realpath(candidate)
   const scratch = await fs.mkdtemp(path.join(os.tmpdir(), 'rsi-verify-'))
   const workdir = path.join(scratch, 'candidate')
+  let out = null
   try {
     await copyTree(absCandidate, workdir)
-    const res = await run(cmd, cmdArgs, workdir, timeoutSecs * 1000)
-    const out = {
-      ok: res.code === 0 && !res.timedOut,
-      exit_code: res.code,
-      timed_out: res.timedOut,
-      stdout: res.stdout.slice(-200_000),
-      stderr: res.stderr.slice(-50_000),
+    out = await run(cmd, cmdArgs, workdir, timeoutSecs * 1000)
+    const res = {
+      ok: out.code === 0 && !out.timedOut,
+      exit_code: out.code,
+      timed_out: out.timedOut,
+      stdout: out.stdout.slice(-200_000),
+      stderr: out.stderr.slice(-50_000),
     }
-    process.stdout.write(JSON.stringify(out, null, 2) + '\n')
-    return out.ok ? 0 : 1
+    if (auditFile) {
+      await fs.appendFile(auditFile,
+        JSON.stringify({ tool: 'verify-run', ts: new Date().toISOString(), candidate: absCandidate, cmd, exit_code: out.code, timed_out: out.timedOut, ok: res.ok }) + '\n')
+    }
+    process.stdout.write(JSON.stringify(res, null, 2) + '\n')
+    return res.ok ? 0 : 1
   } finally {
     await fs.rm(scratch, { recursive: true, force: true }) // rollback: discard the copy
   }
