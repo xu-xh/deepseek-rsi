@@ -87,6 +87,16 @@ export async function commitMemory({ candidate, wave, actor, verdict, score, fin
   }
 
   const dest = path.join(path.resolve(out), waveLabel(wave), actor)
+  // Immutability guard: commits are written once. Re-generating into a commit
+  // dir that already has a MANIFEST would silently mix old and new files
+  // (discovered in the controlled experiment: stale run-check.mjs/spec.txt
+  // survived a re-generate and made the tree drift from the manifest).
+  const existingManifest = path.join(dest, MANIFEST_NAME)
+  if (await fs.stat(existingManifest).then(() => true, () => false)) {
+    const err = new Error(`commit exists (immutable): ${dest}`)
+    err.code = 'EXISTS'
+    throw err
+  }
   await fs.mkdir(dest, { recursive: true })
 
   const files = await fileDigests(absCandidate)

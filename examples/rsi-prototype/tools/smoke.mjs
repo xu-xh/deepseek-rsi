@@ -193,6 +193,15 @@ try {
   // ---- bench graders: correct implementations must score full marks ----
   const benchOk = execFileSync('node', [path.join(ROOT, 'bench', 'selfcheck.mjs')], { encoding: 'utf-8' })
   check('bench graders selfcheck (full marks on correct impls)', benchOk.includes('BENCH-SELFCHECK OK'), benchOk.split('\n').filter((l) => l.startsWith('FAIL')).join('; ') || 'ok')
+
+  // ---- commit immutability: re-generating an existing commit must fail ----
+  const smokeCommitRoot = path.join(ws, 'commits-smoke')
+  let reGen = 0
+  try {
+    execFileSync('node', [path.join(ROOT, 'tools', 'commit-memory.mjs'), '--mode', 'generate', '--candidate', vRoot, '--wave', 'w999', '--actor', 'a01', '--score', '100', '--out', smokeCommitRoot, '--root', ws], { encoding: 'utf-8', stdio: 'pipe' })
+    execFileSync('node', [path.join(ROOT, 'tools', 'commit-memory.mjs'), '--mode', 'generate', '--candidate', vRoot, '--wave', 'w999', '--actor', 'a01', '--score', '100', '--out', smokeCommitRoot, '--root', ws], { encoding: 'utf-8', stdio: 'pipe' })
+  } catch { reGen = 1 }
+  check('re-generate of an existing commit is rejected (immutability)', reGen === 1, reGen ? 'second generate failed as expected' : 'second generate unexpectedly succeeded')
 } finally {
   await fs.rm(ws, { recursive: true, force: true })
 }
