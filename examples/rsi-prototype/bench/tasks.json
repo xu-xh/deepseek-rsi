@@ -1,0 +1,23 @@
+{
+  "notes": "bench task catalog for the baseline-vs-RSI controlled experiment. Each task has a mechanical, deterministic grader under tasks/<name>/grade.mjs (grading only ever runs the candidate; no model in the grading loop). Candidates are single dependency-free Node files with the given filename.",
+  "tasks": [
+    {
+      "id": "http-echo",
+      "file": "server.mjs",
+      "max": 4,
+      "contract": "single dependency-free Node file server.mjs: starts an HTTP server and prints `LISTEN <port>` on stdout; GET / -> 200 body exactly `HELLO-RSI`; GET /health -> 200 body exactly `ok`; POST /echo -> 200 JSON {method,path,body} echoing the raw body; any other path -> 404 body exactly `NOPE`."
+    },
+    {
+      "id": "parser",
+      "file": "parser.mjs",
+      "max": 6,
+      "contract": "single dependency-free Node file parser.mjs reading stdin: strip UTF-8 BOM and CR, skip blank lines, each line `key=value` (first '=' splits), keys sorted, print one compact JSON object. Fixtures cover BOM/CRLF/blank/duplicate/empty-value/=-in-value cases."
+    },
+    {
+      "id": "stats",
+      "file": "stats.mjs",
+      "max": 6,
+      "contract": "single dependency-free Node file stats.mjs reading numeric lines from stdin, printing {count,sum,mean,median,min,max}; skip blanks, decimals allowed, empty input prints exactly {\"count\":0}."
+    }
+  ]
+}

@@ -189,6 +189,10 @@ try {
   // ---- deploy-scope gate: verifier tool surface is machine-checkable ----
   const scopeOk = execFileSync('node', [path.join(ROOT, 'tools', 'check-deploy-scope.mjs')], { encoding: 'utf-8' })
   check('deploy verifier-scope gate passes', scopeOk.includes('DEPLOY-SCOPE OK'), scopeOk.split('\n').filter((l) => l.startsWith('FAIL')).join('; ') || 'ok')
+
+  // ---- bench graders: correct implementations must score full marks ----
+  const benchOk = execFileSync('node', [path.join(ROOT, 'bench', 'selfcheck.mjs')], { encoding: 'utf-8' })
+  check('bench graders selfcheck (full marks on correct impls)', benchOk.includes('BENCH-SELFCHECK OK'), benchOk.split('\n').filter((l) => l.startsWith('FAIL')).join('; ') || 'ok')
 } finally {
   await fs.rm(ws, { recursive: true, force: true })
 }
