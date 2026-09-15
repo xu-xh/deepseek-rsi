@@ -47,3 +47,8 @@ native/system/test/bin/
 
 # RSI prototype runtime state (never commit)
 examples/rsi-prototype/rsi-workspace/
+
+# examples/rsi-prototype/lib is SOURCE (pure ESM helpers), not TS build output.
+# Upstream ignores any lib/ dir (line 4); re-include only this one subtree.
+!examples/rsi-prototype/lib/
+!examples/rsi-prototype/lib/*
