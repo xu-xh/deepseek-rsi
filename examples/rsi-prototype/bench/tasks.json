@@ -18,6 +18,27 @@
       "file": "stats.mjs",
       "max": 6,
       "contract": "single dependency-free Node file stats.mjs reading numeric lines from stdin, printing {count,sum,mean,median,min,max}; skip blanks, decimals allowed, empty input prints exactly {\"count\":0}."
+    },
+    {
+      "id": "trio",
+      "files": ["config.json", "reader.mjs", "checker.mjs"],
+      "max": 6,
+      "contract": "three files: config.json (flat JSON object), reader.mjs (reads config.json, prints `CONFIG-OK: k1=v1,k2=v2` with keys sorted), checker.mjs (verifies the reader references every key: prints OK exit 0, else MISSING: <keys> exit 1). The grader overwrites config.json per fixture — hard-coded configs fail.",
+      "press": "cross-file consistency"
+    },
+    {
+      "id": "validate",
+      "file": "validate.mjs",
+      "max": 6,
+      "contract": "single dependency-free Node file validate.mjs: stdin lines matching ^[A-Z]{2}[0-9]{4}$ per-line -> OK, else BAD <line>; after all lines print `N ok, M bad`. Input may be CRLF, start with UTF-8 BOM, end with a blank line — none may turn a valid code into BAD.",
+      "press": "hostile encoding edges (\\r, BOM)"
+    },
+    {
+      "id": "chain",
+      "files": ["a.mjs", "b.mjs", "c.mjs"],
+      "max": 5,
+      "contract": "a.mjs prints `A:OK-v1`; b.mjs RERUNS `node a.mjs` and prints `B:OK: <a's line>`; c.mjs reruns b and prints `C:OK: <b's line>`. The grader replaces a.mjs with mutated upstreams and asserts the token still flows through — hard-coded chain text fails.",
+      "press": "real data flow (upstream mutation)"
     }
   ]
 }
