@@ -1,0 +1,12 @@
+{
+  "name": "rsi-wave",
+  "description": "RSI wave loop: parallel actors -> isolated verifiers -> hashed memory commit -> curriculum decides next wave (W1 prototype)",
+  "whenToUse": "Demo/validation of a DSH-native recursive-self-improvement loop on a small topic",
+  "phases": [
+    { "title": "rsi-wave-loop", "detail": "outer wave loop" },
+    { "title": "wave-1-explore", "detail": "parallel actor candidates" },
+    { "title": "wave-1-verify", "detail": "isolated verifier per candidate" },
+    { "title": "wave-1-commit", "detail": "hashed memory commit" },
+    { "title": "wave-1-curriculum", "detail": "curriculum decision" }
+  ]
+}

@@ -44,3 +44,6 @@ worktrees/
 .agents/worktrees/
 .typert-*/
 native/system/test/bin/
+
+# RSI prototype runtime state (never commit)
+examples/rsi-prototype/rsi-workspace/
