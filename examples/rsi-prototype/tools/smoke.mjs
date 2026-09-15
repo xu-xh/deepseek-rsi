@@ -202,6 +202,18 @@ try {
     execFileSync('node', [path.join(ROOT, 'tools', 'commit-memory.mjs'), '--mode', 'generate', '--candidate', vRoot, '--wave', 'w999', '--actor', 'a01', '--score', '100', '--out', smokeCommitRoot, '--root', ws], { encoding: 'utf-8', stdio: 'pipe' })
   } catch { reGen = 1 }
   check('re-generate of an existing commit is rejected (immutability)', reGen === 1, reGen ? 'second generate failed as expected' : 'second generate unexpectedly succeeded')
+
+  // ---- learned/: archived verified PASS artifacts must keep full marks ----
+  let learnedOk = true
+  let learnedDetail = ''
+  for (const t of ['http-echo', 'parser', 'stats']) {
+    let out = null
+    try {
+      out = JSON.parse(execFileSync('node', [path.join(ROOT, 'bench', 'grade.mjs'), '--task', t, '--candidate', path.join(ROOT, 'learned', t)], { encoding: 'utf-8' }))
+    } catch { out = null }
+    if (!out || out.score !== out.max) { learnedOk = false; learnedDetail += `${t}:${out ? `${out.score}/${out.max}` : 'grade failed'} ` }
+  }
+  check('learned/ archived artifacts keep full grader marks', learnedOk, learnedDetail || 'ok')
 } finally {
   await fs.rm(ws, { recursive: true, force: true })
 }
