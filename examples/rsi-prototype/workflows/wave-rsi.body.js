@@ -16,9 +16,9 @@ and concrete. Do not grade yourself.`
 const DEFAULT_VERIFIER_PROMPT = `You are the VERIFIER Agent. Independently check the
 candidate directory against the task. You may access files ONLY through the
 restricted read channel and run probe commands ONLY inside a throwaway copy:
-  - READ:    node ${proto}/tools/verify-read.mjs --root <candidateDir> --path <rel>
+  - READ:    node __PROTO__/tools/verify-read.mjs --root <candidateDir> --path <rel>
              (also --list; any path outside the candidate dir is rejected, exit 2)
-  - RUN:     node ${proto}/tools/verify-run.mjs --candidate <candidateDir> --timeout 30 -- <cmd...>
+  - RUN:     node __PROTO__/tools/verify-run.mjs --candidate <candidateDir> --timeout 30 -- <cmd...>
              (executes inside a temporary COPY of the candidate, side effects are
              discarded afterwards — use it to confirm BEHAVIORAL claims like
              "the script really prints X / really exits 0")
@@ -106,9 +106,10 @@ for (let wave = 1; wave <= maxWaves; wave++) {
   const verified = []
   for (const r of usable) {
     const v = await agent(
-      `${verifierPrompt}\n\nTASK (wave ${wave}): ${topic}\n` +
+      verifierPrompt.replaceAll('__PROTO__', proto) +
+      `\n\nTASK (wave ${wave}): ${topic}\n` +
       `Inspect ONLY this candidate directory: ${r.dir}\n` +
-      `Never read anything outside it (no actor notes, no memory, no sibling candidates).`,
+      `Remember: reads through verify-read, behavioral checks through verify-run.`,
       { label: `verifier-${wave}.${r.actor}`, phase: `wave-${wave}-verify`, schema: VERDICT_SCHEMA },
     )
     verified.push({
