@@ -47,6 +47,7 @@ jobs:
           node --check tools/commit-memory.mjs
           node --check tools/verify-read.mjs
           node --check tools/verify-run.mjs
+          node --check tools/check-commit-list.mjs
           node --check tools/check-body-runtime.mjs
           node --check tools/check-deploy-scope.mjs
           node --check bench/grade.mjs

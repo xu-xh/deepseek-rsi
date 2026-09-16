@@ -17,9 +17,18 @@ node tools/commit-memory.mjs --mode list --out <commitsRoot> [--json]
 
 Behavior contract:
 
-1. Walk `<commitsRoot>/<actor>/<commitDir>/` and list every commit whose
-   directory contains `MANIFEST.json`. Directories without a `MANIFEST.json`
-   (and stray files) are ignored.
+1. Identify commit directories under the commits root in BOTH layouts the
+   codebase actually uses:
+   - **actor-first** (`<root>/<actor>/<commitDir>/`): the acceptance fixture
+     layout straightforwardly maps actor = first level, commit = second level.
+   - **wave-first** (`<root>/<wNNN>/<actor>/`, what `commit-memory generate`
+     actually writes via `lib/memory-lib.mjs`): detect a first-level name
+     matching `/^w\d+$/` and traverse wave-first.
+   In either layout, list only directories containing a readable
+   `MANIFEST.json`; stray files, non-directories, symlinks and manifest-less
+   dirs are ignored. The `actor` column prefers `manifest.actor` (when
+   present and non-empty) over the layout dir name; `wave` always comes from
+   the manifest.
 2. Sort rows ascending by `(actor, wave)`: actor name string order, then
    numeric wave order.
 3. Plain output: one row per commit, exactly
