@@ -218,6 +218,10 @@ try {
   // ---- T1 real-dev task: commit-memory --mode list acceptance suite ----
   const listOk = execFileSync('node', [path.join(ROOT, 'tools', 'check-commit-list.mjs')], { encoding: 'utf-8' })
   check('commit-memory list acceptance suite (T1) passes', listOk.includes('CHECK-COMMIT-LIST OK'), listOk.split('\n').filter((l) => l.startsWith('FAIL')).join('; ') || 'ok')
+
+  // ---- T2 real-dev task: verifier audit-hygiene acceptance suite ----
+  const auditOk = execFileSync('node', [path.join(ROOT, 'tools', 'check-audit-hygiene.mjs')], { encoding: 'utf-8' })
+  check('verify read/run audit-hygiene suite (T2) passes', auditOk.includes('CHECK-AUDIT-HYGIENE OK'), auditOk.split('\n').filter((l) => l.startsWith('FAIL')).join('; ') || 'ok')
 } finally {
   await fs.rm(ws, { recursive: true, force: true })
 }

@@ -61,7 +61,10 @@ async function main(argv) {
   if (dash === -1) throw Object.assign(new Error('expected "--" before the command'), { code: 'USAGE' })
   const candidate = need('candidate', argv)
   const timeoutSecs = Number(argv[argv.indexOf('--timeout') + 1] ?? 60)
-  const auditFile = argv[argv.indexOf('--audit') + 1]
+  // Without --audit there must be no audit file and no write side effect; the
+  // indexOf(-1)+1 trick would read argv[0] ("--root"/"--candidate") as the file.
+  const auditIdx = argv.indexOf('--audit')
+  const auditFile = auditIdx >= 0 ? argv[auditIdx + 1] : undefined
   const cmd = argv[dash + 1]
   const cmdArgs = argv.slice(dash + 2)
 

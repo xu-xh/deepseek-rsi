@@ -35,7 +35,10 @@ async function resolveInside(root, p) {
 async function main(argv) {
   const root = need('root', argv)
   const absRoot = await fs.realpath(root)
-  const auditFile = argv[argv.indexOf('--audit') + 1]
+  // Without --audit there must be no audit file and no write side effect; the
+  // indexOf(-1)+1 trick would read argv[0] ("--root"/"--candidate") as the file.
+  const auditIdx = argv.indexOf('--audit')
+  const auditFile = auditIdx >= 0 ? argv[auditIdx + 1] : undefined
   const audit = async (target, ok, note = '') => {
     if (!auditFile) return
     await fs.appendFile(auditFile,
