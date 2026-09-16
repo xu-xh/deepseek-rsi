@@ -129,7 +129,7 @@ process.stdout.write('CFG=' + p + '\\n')
 import path from 'node:path'
 import crypto from 'node:crypto'
 const src = process.argv[2]
-const outRoot = process.env.ARCHIVE_OUT || path.join(process.cwd(), 'out')
+const outRoot = path.join(process.cwd(), 'out')
 const h = crypto.createHash('sha256')
 for (const f of fs.readdirSync(src).sort()) h.update(f).update(fs.readFileSync(path.join(src, f)))
 const name = 'arc-' + h.digest('hex').slice(0, 16)

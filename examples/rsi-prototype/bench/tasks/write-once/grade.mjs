@@ -19,20 +19,20 @@ export async function grade(dir, { runner = process.execPath } = {}) {
   if (!src) return { score: 0, max: 1, checks }
 
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'rsi-archive-'))
+  const out = path.join(dir, 'out') // contract: ./out relative to the candidate dir
   let ok = src ? 1 : 0 // presence counts
   try {
     const payload = path.join(tmp, 'payload')
-    const out = path.join(tmp, 'out')
     await fs.mkdir(payload, { recursive: true })
     await fs.writeFile(path.join(payload, 'data.txt'), 'v1-content')
 
-    const run1 = spawnSync(runner, ['archive.mjs', payload], { cwd: dir, encoding: 'utf-8', timeout: 5000, env: { ...process.env, ARCHIVE_OUT: out } })
+    const run1 = spawnSync(runner, ['archive.mjs', payload], { cwd: dir, encoding: 'utf-8', timeout: 5000, env: process.env })
     const ok1 = run1.status === 0 && /^ARCHIVED\s+\S+/.test((run1.stdout ?? '').trim())
     if (ok1) ok++
     checks.push({ name: 'first archive succeeds', pass: ok1, got: `exit=${run1.status} ${JSON.stringify((run1.stdout ?? '').trim()).slice(0, 60)}` })
 
     // Second run must refuse (EXISTS, exit 3) and leave the first archive intact.
-    const run2 = spawnSync(runner, ['archive.mjs', payload], { cwd: dir, encoding: 'utf-8', timeout: 5000, env: { ...process.env, ARCHIVE_OUT: out } })
+    const run2 = spawnSync(runner, ['archive.mjs', payload], { cwd: dir, encoding: 'utf-8', timeout: 5000, env: process.env })
     const ok2 = run2.status !== 0 && /EXISTS/.test((run2.stdout ?? '').trim() + (run2.stderr ?? ''))
     if (ok2) ok++
     checks.push({ name: 'second archive refused with EXISTS', pass: ok2, got: `exit=${run2.status} ${JSON.stringify(((run2.stdout ?? '') + (run2.stderr ?? '')).trim()).slice(0, 60)}` })
@@ -48,6 +48,7 @@ export async function grade(dir, { runner = process.execPath } = {}) {
     checks.push({ name: 'first archive payload intact after refusal', pass: intact, got: files.join(',') })
   } finally {
     await fs.rm(tmp, { recursive: true, force: true })
+    await fs.rm(out, { recursive: true, force: true })
   }
   return { score: ok, max: 4, checks }
 }
