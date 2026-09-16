@@ -49,6 +49,8 @@ jobs:
           node --check tools/verify-run.mjs
           node --check tools/check-commit-list.mjs
           node --check tools/check-audit-hygiene.mjs
+          node --check tools/audit-workspace.mjs
+          node --check tools/check-audit-workspace.mjs
           node --check tools/check-body-runtime.mjs
           node --check tools/check-deploy-scope.mjs
           node --check bench/grade.mjs

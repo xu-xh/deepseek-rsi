@@ -222,6 +222,10 @@ try {
   // ---- T2 real-dev task: verifier audit-hygiene acceptance suite ----
   const auditOk = execFileSync('node', [path.join(ROOT, 'tools', 'check-audit-hygiene.mjs')], { encoding: 'utf-8' })
   check('verify read/run audit-hygiene suite (T2) passes', auditOk.includes('CHECK-AUDIT-HYGIENE OK'), auditOk.split('\n').filter((l) => l.startsWith('FAIL')).join('; ') || 'ok')
+
+  // ---- T3 real-dev task: workspace cross-root consistency audit suite ----
+  const awsOk = execFileSync('node', [path.join(ROOT, 'tools', 'check-audit-workspace.mjs')], { encoding: 'utf-8' })
+  check('audit-workspace cross-root consistency suite (T3) passes', awsOk.includes('CHECK-AUDIT-WORKSPACE OK'), awsOk.split('\n').filter((l) => l.startsWith('FAIL')).join('; ') || 'ok')
 } finally {
   await fs.rm(ws, { recursive: true, force: true })
 }
