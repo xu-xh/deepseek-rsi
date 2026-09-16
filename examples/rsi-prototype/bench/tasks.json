@@ -39,6 +39,41 @@
       "max": 5,
       "contract": "a.mjs prints `A:OK-v1`; b.mjs RERUNS `node a.mjs` and prints `B:OK: <a's line>`; c.mjs reruns b and prints `C:OK: <b's line>`. The grader replaces a.mjs with mutated upstreams and asserts the token still flows through — hard-coded chain text fails.",
       "press": "real data flow (upstream mutation)"
+    },
+    {
+      "id": "cli-forms",
+      "file": "cli.mjs",
+      "max": 6,
+      "contract": "single dependency-free Node file cli.mjs: prints `MODE=<m> NAME=<n>`. Accepts BOTH flag form (`--mode m --name n`, also `--mode=m`) and positional form (`m n`); missing mode or name -> usage line to stderr, exit 2, empty stdout.",
+      "origin_defect": "run-1: commit CLI accepted only positional form while the orchestrator invoked the flag form; every commit silently failed"
+    },
+    {
+      "id": "loop-terminate",
+      "file": "loop.mjs",
+      "max": 6,
+      "contract": "single dependency-free Node file loop.mjs reading stdin lines 'ok'/'fail' (blanks ignored): on the 3rd CONSECUTIVE 'fail' print `STOP-3` and exit 0; at EOF print `EOF-<count>` and exit 0. Any input sequence must terminate quickly — a run that never exits fails.",
+      "origin_defect": "run-1: a commit loop whose only stop condition never fired burned budget until the process died"
+    },
+    {
+      "id": "home-fallback",
+      "file": "paths.mjs",
+      "max": 4,
+      "contract": "single dependency-free Node file paths.mjs printing `CFG=<path>` from the first available source: $CFG_DIR, then $HOME/.rsi-cfg, then os.tmpdir()/rsi-cfg. Must still print a usable path when BOTH $HOME and $CFG_DIR are cleared (no crash, no empty output).",
+      "origin_defect": "run-1: subprocesses inherited no $HOME; any tool assuming $HOME blew up"
+    },
+    {
+      "id": "write-once",
+      "file": "archive.mjs",
+      "max": 4,
+      "contract": "single dependency-free Node file archive.mjs <dir>: copies every file in <dir> into ./out under a NAME DERIVED FROM THE CONTENT (stable for identical content, unique per different content); if that name already exists print `EXISTS`, exit 3, and do not touch existing files; first success prints `ARCHIVED <name>` exit 0. Re-archiving the same content must be refused.",
+      "origin_defect": "run-3: re-running with fixed ids overwrote an existing commit and mixed old/new files until the immutable-commit guard was added"
+    },
+    {
+      "id": "tdz-fix",
+      "file": "broken.mjs",
+      "max": 2,
+      "contract": "single dependency-free Node file broken.mjs: a template literal is evaluated before the const it references, so the file crashes with `Cannot access ... before initialization` when run (a syntax check passes). Fix the initialization order in place so `node broken.mjs` exits 0 printing exactly `VALUE=42`.",
+      "origin_defect": "W2 experiment: verifier prompt template referenced ${proto} before `const proto`; only a real run could catch it"
     }
   ]
 }
